@@ -5,7 +5,7 @@ import { Message, Role } from './types';
 import ChatInterface from './components/ChatInterface';
 import HelpModal from './components/HelpModal';
 import ApiKeyModal from './components/ApiKeyModal';
-import { sendMessageToGemini, resetSession } from './services/gemini';
+import { sendMessageToGemini, resetSession, getApiKey } from './services/gemini';
 
 const App: React.FC = () => {
   const [input, setInput] = useState('');
@@ -19,32 +19,23 @@ const App: React.FC = () => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Safe check for API Key on mount
+  // Check for API Key in localStorage on mount
   useEffect(() => {
-    const checkKey = async () => {
-      // Check window.aistudio bridge safely
-      if (typeof window.aistudio !== 'undefined') {
-        try {
-          const hasKey = await window.aistudio.hasSelectedApiKey();
-          if (!hasKey) {
-            setIsApiModalOpen(true);
-          }
-        } catch (e) {
-          console.error("AI Studio Bridge Error", e);
-        }
-      } else {
-        // Fallback: check if the bundled process.env.API_KEY exists
-        if (!process.env.API_KEY) {
-          setIsApiModalOpen(true);
-        }
-      }
-    };
-    checkKey();
+    const key = getApiKey();
+    if (!key) {
+      setIsApiModalOpen(true);
+    }
   }, []);
 
   const handleSendMessage = async (textOverride?: string) => {
     const textToSend = textOverride || input;
     if (!textToSend.trim() || isLoading) return;
+
+    // Double check key before sending
+    if (!getApiKey()) {
+      setIsApiModalOpen(true);
+      return;
+    }
 
     if (!hasStarted) {
       setHasStarted(true);
@@ -91,7 +82,7 @@ const App: React.FC = () => {
         errorMsg = "**API 키 미설정**: 서비스 이용을 위해 API 키 설정이 필요합니다. 상단의 열쇠 아이콘을 클릭해 주세요.";
       } else if (error.message === "API_KEY_INVALID") {
         setIsApiModalOpen(true);
-        errorMsg = "**API 키 유효성 오류**: 설정된 API 키가 올바르지 않거나 결제 설정이 활성화되지 않았습니다.";
+        errorMsg = "**API 키 유효성 오류**: 설정된 API 키가 올바르지 않거나 결제 설정이 활성화되지 않았습니다. 상단 열쇠 아이콘을 클릭해 키를 다시 설정해 주세요.";
       }
 
       const errorMessage: Message = {

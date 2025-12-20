@@ -2,16 +2,17 @@
 import { GoogleGenAI, Chat, GenerateContentResponse } from "@google/genai";
 import { ZEUS_SYSTEM_INSTRUCTION } from '../constants';
 
-// Store the chat session in memory for the SPA duration
+// Internal state to hold the current user's API Key
+let userApiKey: string | null = localStorage.getItem('GEMINI_API_KEY');
 let chatSession: Chat | null = null;
 
-const getApiKey = (): string | undefined => {
-  try {
-    return process.env.API_KEY;
-  } catch {
-    return undefined;
-  }
+export const setApiKey = (key: string) => {
+  userApiKey = key;
+  localStorage.setItem('GEMINI_API_KEY', key);
+  chatSession = null; // Reset session when key changes
 };
+
+export const getApiKey = () => userApiKey;
 
 export const getChatSession = (): Chat => {
   if (!chatSession) {
@@ -21,7 +22,6 @@ export const getChatSession = (): Chat => {
       throw new Error("API_KEY_MISSING");
     }
 
-    // Initialize the client right before creating the session
     const ai = new GoogleGenAI({ apiKey });
     
     chatSession = ai.chats.create({
@@ -47,19 +47,21 @@ export const sendMessageToGemini = async (message: string): Promise<string> => {
       throw new Error("API_KEY_MISSING");
     }
     
-    if (error instanceof Error && error.message.includes("Requested entity was not found")) {
+    // Check for common auth errors
+    const errorStr = String(error);
+    if (errorStr.includes("API_KEY_INVALID") || errorStr.includes("invalid") || errorStr.includes("403") || errorStr.includes("401")) {
       throw new Error("API_KEY_INVALID");
     }
     throw error;
   }
 };
 
-export const testApiConnection = async (): Promise<boolean> => {
+export const testApiConnection = async (tempKey?: string): Promise<boolean> => {
   try {
-    const apiKey = getApiKey();
-    if (!apiKey) return false;
+    const keyToTest = tempKey || getApiKey();
+    if (!keyToTest) return false;
 
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = new GoogleGenAI({ apiKey: keyToTest });
     await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: 'ping',
