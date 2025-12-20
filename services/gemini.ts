@@ -5,15 +5,23 @@ import { ZEUS_SYSTEM_INSTRUCTION } from '../constants';
 // Store the chat session in memory for the SPA duration
 let chatSession: Chat | null = null;
 
+const getApiKey = (): string | undefined => {
+  try {
+    return process.env.API_KEY;
+  } catch {
+    return undefined;
+  }
+};
+
 export const getChatSession = (): Chat => {
   if (!chatSession) {
-    const apiKey = process.env.API_KEY;
+    const apiKey = getApiKey();
     
     if (!apiKey) {
       throw new Error("API_KEY_MISSING");
     }
 
-    // Initialize the client right before creating the session to ensure latest API Key usage.
+    // Initialize the client right before creating the session
     const ai = new GoogleGenAI({ apiKey });
     
     chatSession = ai.chats.create({
@@ -48,10 +56,9 @@ export const sendMessageToGemini = async (message: string): Promise<string> => {
 
 export const testApiConnection = async (): Promise<boolean> => {
   try {
-    const apiKey = process.env.API_KEY;
+    const apiKey = getApiKey();
     if (!apiKey) return false;
 
-    // Create a fresh instance for the test
     const ai = new GoogleGenAI({ apiKey });
     await ai.models.generateContent({
       model: 'gemini-3-flash-preview',

@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ko">
   <head>
@@ -13,12 +14,11 @@
         font-family: 'Noto Sans KR', sans-serif;
         background-color: #0f172a; /* Slate 900 */
         color: #e2e8f0; /* Slate 200 */
-        word-break: keep-all; /* Prevent awkward word breaks in Korean */
+        word-break: keep-all;
       }
       .font-mono {
         font-family: 'JetBrains Mono', monospace;
       }
-      /* Custom Scrollbar */
       ::-webkit-scrollbar {
         width: 8px;
         height: 8px;
@@ -49,5 +49,7 @@
 </head>
   <body>
     <div id="root"></div>
+    <!-- Explicitly load the index.tsx module -->
+    <script type="module" src="index.tsx"></script>
   </body>
 </html>
