@@ -7,8 +7,14 @@ let chatSession: Chat | null = null;
 
 export const getChatSession = (): Chat => {
   if (!chatSession) {
+    const apiKey = process.env.API_KEY;
+    
+    if (!apiKey) {
+      throw new Error("API_KEY_MISSING");
+    }
+
     // Initialize the client right before creating the session to ensure latest API Key usage.
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey });
     
     chatSession = ai.chats.create({
       model: 'gemini-3-pro-preview', 
@@ -26,8 +32,13 @@ export const sendMessageToGemini = async (message: string): Promise<string> => {
     const chat = getChatSession();
     const result: GenerateContentResponse = await chat.sendMessage({ message });
     return result.text || "응답을 생성할 수 없습니다. 다시 시도해 주세요.";
-  } catch (error) {
+  } catch (error: any) {
     console.error("Gemini API Error:", error);
+    
+    if (error.message === "API_KEY_MISSING") {
+      throw new Error("API_KEY_MISSING");
+    }
+    
     if (error instanceof Error && error.message.includes("Requested entity was not found")) {
       throw new Error("API_KEY_INVALID");
     }
@@ -37,8 +48,11 @@ export const sendMessageToGemini = async (message: string): Promise<string> => {
 
 export const testApiConnection = async (): Promise<boolean> => {
   try {
+    const apiKey = process.env.API_KEY;
+    if (!apiKey) return false;
+
     // Create a fresh instance for the test
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey });
     await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: 'ping',

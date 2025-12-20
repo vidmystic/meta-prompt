@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Zap, HelpCircle, Upload, ArrowRight, FileText, X, Key, Settings } from 'lucide-react';
+import { Send, Zap, HelpCircle, Upload, ArrowRight, FileText, X, Key, Settings, AlertTriangle } from 'lucide-react';
 import { Message, Role } from './types';
 import ChatInterface from './components/ChatInterface';
 import HelpModal from './components/HelpModal';
@@ -19,12 +19,22 @@ const App: React.FC = () => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Check if API Key is selected on mount
+  // Safe check for API Key on mount
   useEffect(() => {
     const checkKey = async () => {
-      if (window.aistudio) {
-        const hasKey = await window.aistudio.hasSelectedApiKey();
-        if (!hasKey) {
+      // Check window.aistudio bridge safely
+      if (typeof window.aistudio !== 'undefined') {
+        try {
+          const hasKey = await window.aistudio.hasSelectedApiKey();
+          if (!hasKey) {
+            setIsApiModalOpen(true);
+          }
+        } catch (e) {
+          console.error("AI Studio Bridge Error", e);
+        }
+      } else {
+        // Fallback: check if the bundled process.env.API_KEY exists
+        if (!process.env.API_KEY) {
           setIsApiModalOpen(true);
         }
       }
@@ -36,7 +46,6 @@ const App: React.FC = () => {
     const textToSend = textOverride || input;
     if (!textToSend.trim() || isLoading) return;
 
-    // Ensure session reset if API key was recently changed or if this is the start
     if (!hasStarted) {
       setHasStarted(true);
     }
@@ -75,14 +84,20 @@ const App: React.FC = () => {
     } catch (error: any) {
       console.error("Failed to send message", error);
       
-      if (error.message === "API_KEY_INVALID") {
+      let errorMsg = "**시스템 오류**: 요청을 처리할 수 없습니다.";
+      
+      if (error.message === "API_KEY_MISSING") {
         setIsApiModalOpen(true);
+        errorMsg = "**API 키 미설정**: 서비스 이용을 위해 API 키 설정이 필요합니다. 상단의 열쇠 아이콘을 클릭해 주세요.";
+      } else if (error.message === "API_KEY_INVALID") {
+        setIsApiModalOpen(true);
+        errorMsg = "**API 키 유효성 오류**: 설정된 API 키가 올바르지 않거나 결제 설정이 활성화되지 않았습니다.";
       }
 
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: Role.MODEL,
-        content: "**시스템 오류**: API 키가 올바르지 않거나 연결에 실패했습니다. 상단의 열쇠 아이콘을 눌러 API 키를 다시 설정해 주세요.",
+        content: errorMsg,
         timestamp: Date.now(),
       };
       setMessages((prev) => [...prev, errorMessage]);
